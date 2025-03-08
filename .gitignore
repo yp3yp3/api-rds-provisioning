@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.venv
+venv/
+
+# SAM / CloudFormation
+.aws-sam/
+build/
+.sam-outputs/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# IDE files
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
+.env

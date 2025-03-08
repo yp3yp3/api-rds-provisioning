@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless RDS Cluster Automation (API Gateway → SNS → SQS → Lambda)
+
+Parameters:
+ 
+  GitHubRepoName:
+    Type: String
+    Description: "GitHub repository for Terraform PRs"
+
+  GitHubToken:
+    Type: String
+    Description: "GitHub token to access the repository"
+    NoEcho: true
+
+Resources:
+
+  GitHubTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: github-token-secret
+      SecretString: !Ref GitHubToken
+
+  # SNS Topic to publish incoming provisioning requests
+  RDSRequestTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: rds-request-topic
+
+  # SQS Queue for reliable and decoupled message handling
+  RDSRequestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: rds-request-queue
+
+  # SNS Subscription to forward messages from SNS Topic to SQS Queue
+  SNSToSQSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref RDSRequestTopic
+      Protocol: sqs
+      Endpoint: !GetAtt RDSRequestQueue.Arn
+      RawMessageDelivery: true
+
+  # Policy to allow SNS Topic to publish messages into the SQS Queue
+  RDSRequestQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref RDSRequestQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt RDSRequestQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref RDSRequestTopic
+
+  # Lambda Function triggered by messages arriving in SQS
+  RDSProvisionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rdsProvisionFunction
+      Runtime: python3.12
+      Handler: handler.lambda_handler
+      CodeUri: lambda/
+      MemorySize: 256
+      Timeout: 120
+      Environment:
+        Variables:
+          GITHUB_TOKEN_SECRET_NAME: !Ref GitHubTokenSecret
+          GITHUB_REPO_NAME: !Ref GitHubRepoName
+      Policies:
+        - SQSPollerPolicy:  # Permission to poll SQS
+            QueueName: !GetAtt RDSRequestQueue.QueueName
+        - AWSSecretsManagerGetSecretValuePolicy:  # Access to GitHub token stored securely
+            SecretArn: !Ref GitHubTokenSecret
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RDSRequestQueue.Arn
+            BatchSize: 1
+
+  # API Gateway to receive HTTP requests and forward them to SNS Topic
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      EndpointConfiguration: REGIONAL
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: RDS Provisioning API
+          version: '1.0'
+        paths:
+          /provision:
+            post:
+              responses:
+                default:
+                  description: "Accepted"
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:sns:path//${RDSRequestTopic}"
+                credentials: !GetAtt ApiGatewaySnsRole.Arn
+                passthroughBehavior: when_no_templates
+                httpMethod: POST
+                type: aws
+                requestParameters:
+                  integration.request.header.Content-Type: "'application/x-www-form-urlencoded'"
+                requestTemplates:
+                  application/json: |
+                    Action=Publish&TopicArn=$util.urlEncode('${RDSRequestTopic}')&Message=$input.body
+                responses:
+                  default:
+                    statusCode: "202"
+
+  # IAM Role allowing API Gateway to publish messages to SNS
+  ApiGatewaySnsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ApiGatewayPublishToSNS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref RDSRequestTopic
+  # Custom Domain for API Gateway
+  ApiGatewayDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: api.yp3yp3.online
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: arn:aws:acm:eu-central-1:992382507075:certificate/d4b49150-f8d1-4c7d-a9c9-5dafa5211464
+
+  # Mapping Custom Domain to API Gateway Stage
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref ApiGatewayDomain
+      RestApiId: !Ref ApiGateway
+      Stage: Prod
+
+
+Outputs:
+  ApiGatewayUrl:
+    Description: "API Gateway Endpoint URL for RDS Provisioning"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/provision"
+
+  RDSProvisionFunctionArn:
+    Description: "ARN of the Lambda Function"
+    Value: !GetAtt RDSProvisionFunction.Arn
