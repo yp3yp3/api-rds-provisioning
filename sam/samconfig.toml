@@ -1,0 +1,11 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "lamda-tf"
+resolve_s3 = true
+s3_prefix = "lamda-tf"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "GitHubRepoName=\"yp3yp3/api-rds-provisioning\""
+image_repositories = []

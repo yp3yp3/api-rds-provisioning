@@ -32,6 +32,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: rds-request-queue
+      VisibilityTimeout: 130
 
   # SNS Subscription to forward messages from SNS Topic to SQS Queue
   SNSToSQSSubscription:
@@ -101,8 +102,12 @@ Resources:
           /provision:
             post:
               responses:
-                default:
-                  description: "Accepted"
+                '200':
+                  description: "Request accepted"
+                  content:
+                    application/json:
+                      schema:
+                        type: object
               x-amazon-apigateway-integration:
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:sns:path//${RDSRequestTopic}"
                 credentials: !GetAtt ApiGatewaySnsRole.Arn
@@ -113,10 +118,16 @@ Resources:
                   integration.request.header.Content-Type: "'application/x-www-form-urlencoded'"
                 requestTemplates:
                   application/json: |
-                    Action=Publish&TopicArn=$util.urlEncode('${RDSRequestTopic}')&Message=$input.body
+                    Action=Publish&TopicArn=$util.urlEncode('arn:aws:sns:${AWS::Region}:${AWS::AccountId}:rds-request-topic')&Message=$input.body
                 responses:
                   default:
-                    statusCode: "202"
+                    statusCode: 200
+                    responseTemplates:
+                      application/json: |
+                        {
+                          "message": "Request accepted"
+                        }
+
 
   # IAM Role allowing API Gateway to publish messages to SNS
   ApiGatewaySnsRole:
@@ -145,7 +156,7 @@ Resources:
       EndpointConfiguration:
         Types:
           - REGIONAL
-      RegionalCertificateArn: arn:aws:acm:eu-central-1:992382507075:certificate/d4b49150-f8d1-4c7d-a9c9-5dafa5211464
+      RegionalCertificateArn: arn:aws:acm:us-east-1:992382507075:certificate/4c818c22-adc8-458b-a2bd-9a41be8ef182
 
   # Mapping Custom Domain to API Gateway Stage
   ApiBasePathMapping:

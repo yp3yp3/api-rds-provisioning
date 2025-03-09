@@ -17,6 +17,6 @@ variable "engine" {
 
 variable "db_username" {
   type        = string
-  default     = "admin"
+  default     = "rds_admin"
   description = "DB username (default: admin)"
 }
