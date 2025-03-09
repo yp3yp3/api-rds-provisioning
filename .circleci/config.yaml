@@ -1,0 +1,60 @@
+version: 2.1  # CircleCI version
+
+# Define a Terraform executor using the official Terraform Docker image
+executors:
+  terraform-executor:
+    docker:
+      - image: hashicorp/terraform:latest
+    working_directory: ~/repo
+
+jobs:
+  terraform-apply:
+    executor: terraform-executor
+    steps:
+      - checkout  # Pull the latest code from the repository
+
+      # Install AWS CLI to allow Terraform to interact with AWS resources
+      - run:
+          name: Install AWS CLI
+          command: |
+            apk add --no-cache curl jq unzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install
+            aws --version  # Verify AWS CLI installation
+
+      # Initialize Terraform (fetch provider plugins and configure backend)
+      - run:
+          name: Terraform Init
+          command: terraform init
+
+      # Identify the latest modified `.tfvars` file from the last commit
+      - run:
+          name: Find Latest tfvars File
+          command: |
+            LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1)
+            if [[ -z "$LATEST_FILE" ]]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+            fi
+            echo "Latest Terraform vars file: $LATEST_FILE"
+            echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
+
+      # Validate the Terraform plan (checks for changes)
+      - run:
+          name: Terraform Plan
+          command: terraform plan -var-file="$LATEST_FILE"
+
+      # Apply changes automatically without manual approval
+      - run:
+          name: Terraform Apply
+          command: terraform apply -auto-approve -var-file="$LATEST_FILE"
+
+workflows:
+  version: 2
+  apply-on-merge:
+    jobs:
+      - terraform-apply:
+          filters:
+            branches:
+              only: main  # This workflow triggers ONLY when merging into `main`
