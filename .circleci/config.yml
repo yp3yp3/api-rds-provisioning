@@ -53,7 +53,7 @@ jobs:
           command: |
             source $BASH_ENV
             cd terraform
-            terraform plan -var-file="../$LATEST_FILE" -lock=false
+            #terraform plan -var-file="../$LATEST_FILE" -lock=false
             cd ..
 
       # Apply changes automatically without manual approval
