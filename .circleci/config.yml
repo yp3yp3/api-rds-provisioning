@@ -1,6 +1,5 @@
 version: 2.1  # CircleCI version
 
-# Define a Terraform executor using the official Terraform Docker image
 executors:
   terraform-executor:
     docker:
@@ -23,29 +22,50 @@ jobs:
       # Initialize Terraform (fetch provider plugins and configure backend)
       - run:
           name: Terraform Init
-          command: terraform init
+          command: |
+            cd terraform
+            terraform init
+            cd ..
 
       # Identify the latest modified `.tfvars` file from the last commit
       - run:
           name: Find Latest tfvars File
           command: |
             LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1)
-            if [[ -z "$LATEST_FILE" ]]; then
+            if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
               circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
             fi
             echo "Latest Terraform vars file: $LATEST_FILE"
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
 
-      # Validate the Terraform plan (checks for changes)
+      # Validate that the tfvars file actually exists
+      - run:
+          name: Validate tfvars File Exists
+          command: |
+            source $BASH_ENV
+            if [ ! -f "$LATEST_FILE" ]; then
+              echo "❌ Error: The specified tfvars file '$LATEST_FILE' does not exist."
+              ls -l $(dirname "$LATEST_FILE")  # List directory contents for debugging
+              exit 1
+            fi
+
+      # Change directory to Terraform and run Terraform Plan
       - run:
           name: Terraform Plan
-          command: terraform plan -var-file="$LATEST_FILE"
+          command: |
+            cd terraform
+            terraform plan -var-file="../$LATEST_FILE"
+            cd ..
 
       # Apply changes automatically without manual approval
       - run:
           name: Terraform Apply
-          command: terraform apply -auto-approve -var-file="$LATEST_FILE"
+          command: |
+            cd terraform
+            terraform apply -auto-approve -var-file="../$LATEST_FILE"
+            cd ..
 
 workflows:
   version: 2
