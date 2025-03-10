@@ -16,7 +16,7 @@ jobs:
           command: |
             echo $SLACK_BOT_TOKEN
             echo $SLACK_ID
-
+            sudo apt-get update && sudo apt-get install -y curl
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
