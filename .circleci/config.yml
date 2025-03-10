@@ -44,7 +44,6 @@ jobs:
           command: |
             source $BASH_ENV
             cd terraform
-            echo $BASENAME
             terraform init -backend-config="key=environments/${BASENAME}.tfstate"
             cd ..
 
@@ -54,8 +53,7 @@ jobs:
           command: |
             source $BASH_ENV
             cd terraform
-            echo $LATEST_FILE
-            terraform plan -var-file="../$LATEST_FILE"
+            terraform plan -var-file="../$LATEST_FILE" -lock=false
             cd ..
 
       # Apply changes automatically without manual approval
