@@ -83,27 +83,22 @@ jobs:
           command: |
             source $BASH_ENV
 
-            JSON_PAYLOAD=$(cat <<-'EOF'
-            {
-              "channel": "'$SLACK_USER_ID'",
+            curl -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "channel": "'"$SLACK_USER_ID"'",
               "text": "🚀 *New RDS Instance Created!*",
               "attachments": [
                 {
                   "color": "#36a64f",
                   "fields": [
-                    {"title": "🔑 Username", "value": "'$DB_USER'", "short": true},
-                    {"title": "🔗 Endpoint", "value": "'$DB_ENDPOINT'", "short": false}
+                    {"title": "🔑 Username", "value": "'"$DB_USER"'", "short": true},
+                    {"title": "🔗 Endpoint", "value": "'"$DB_ENDPOINT"'", "short": false}
                   ]
                 }
               ]
-            EOF
-            )
-
-
-            curl -X POST "https://slack.com/api/chat.postMessage" \
-              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data "$JSON_PAYLOAD"
+            }'
 workflows:
   version: 2
   apply-on-merge:
