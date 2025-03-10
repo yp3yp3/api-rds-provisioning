@@ -21,7 +21,7 @@ jobs:
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "channel": "'"$SLACK_USER_ID"'",
+              "channel": "U068JF87UQP",
               "text": "🚀 *New RDS Instance Created!*",
               "attachments": [
                 {
