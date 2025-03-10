@@ -76,7 +76,7 @@ jobs:
             SLACK_ID=$(awk -F '"' '/slack_user_id/ {print $2}' ../$LATEST_FILE)
 
             echo "DB_USER=$DB_USER" >> $BASH_ENV
-            echo "DB_PASS=$DB_PASS" >> $BASH_ENV
+            echo "export DB_PASS=$(printf %q "$DB_PASS")" >> "$BASH_ENV"
             echo "DB_ENDPOINT=$DB_ENDPOINT" >> $BASH_ENV
             echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
             cd ..
