@@ -74,7 +74,7 @@ jobs:
             DB_PASS=$(terraform output -raw db_password)
             DB_ENDPOINT=$(terraform output -raw db_endpoint)
             SLACK_ID=$(awk -F '"' '/slack_user_id/ {print $2}' ../$LATEST_FILE)
-            echo $SLACK_USER_ID
+            echo $SLACK_ID
             echo $DB_USER
             echo $DB_ENDPOINT
             echo $DB_PASS
@@ -87,15 +87,16 @@ jobs:
           name: Send Slack Notification
           command: |
             source $BASH_ENV
-            echo $SLACK_USER_ID
+            echo $SLACK_ID
             echo $DB_USER
             echo $DB_ENDPOINT
+            echo $DB_PASS
             apk add --no-cache curl
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "channel": "'"$SLACK_USER_ID"'",
+              "channel": "'"$SLACK_ID"'",
               "text": "🚀 *New RDS Instance Created!*",
               "attachments": [
                 {
