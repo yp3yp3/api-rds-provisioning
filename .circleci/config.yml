@@ -11,28 +11,7 @@ jobs:
     executor: terraform-executor
     steps:
       - checkout  # Pull the latest code from the repository
-      - run:
-          name: test
-          command: |
-            echo $SLACK_BOT_TOKEN
-            echo $SLACK_ID
-            apk add --no-cache curl
-            curl -X POST "https://slack.com/api/chat.postMessage" \
-            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "channel": "U068JF87UQP",
-              "text": "🚀 *New RDS Instance Created!*",
-              "attachments": [
-                {
-                  "color": "#36a64f",
-                  "fields": [
-                    {"title": "🔑 Username", "value": "'"$DB_USER"'", "short": true},
-                    {"title": "🔗 Endpoint", "value": "'"$DB_ENDPOINT"'", "short": false}
-                  ]
-                }
-              ]
-            }'
+
       # Install AWS CLI to allow Terraform to interact with AWS resources
       - run:
           name: Install AWS CLI
@@ -89,7 +68,6 @@ jobs:
       - run:
           name: Get Terraform Outputs
           command: |
-            source $BASH_ENV
             DB_USER=$(terraform output -raw db_username)
             DB_PASS=$(terraform output -raw db_password)
             DB_ENDPOINT=$(terraform output -raw db_endpoint)
