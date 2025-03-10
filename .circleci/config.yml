@@ -153,7 +153,7 @@ jobs:
               if aws s3 ls s3://$bucket/environments/${environment_name}.tfstate > /dev/null 2>&1; then
                 echo "File '$tfvars_file' is older than $DAYS_TO_KEEP days -> destroying environment..."
                 # Initialize Terraform with any relevant backend configuration
-                terraform init -backend-config="key=environments/${environment_name}.tfstate"
+                terraform init -backend-config="key=environments/${environment_name}.tfstate" -reconfigure
 
                 # Destroy resources using this .tfvars file
                 terraform destroy -auto-approve -lock=false -var-file="$tfvars_file"
