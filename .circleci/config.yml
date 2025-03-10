@@ -133,7 +133,7 @@ jobs:
 
                 # Destroy resources using this .tfvars file
                 terraform destroy -auto-approve -lock=false -var-file="$tfvars_file"
-              fi
+              
               else
                 echo "No existing Terraform state found for '$environment_name'. Skipping destroy."
               fi
