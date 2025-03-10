@@ -110,7 +110,7 @@ jobs:
           command: |
             cd terraform
 
-            DAYS_TO_KEEP=0
+            DAYS_TO_KEEP=-1
 
             echo "Removing environments not modified in the last $DAYS_TO_KEEP days (except prod)..."
 
