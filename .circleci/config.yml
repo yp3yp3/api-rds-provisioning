@@ -24,7 +24,9 @@ jobs:
       - run:
           name: Find Latest tfvars File
           command: |
+            echo hello1
             LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1)
+            echo hello2
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
             echo "hello from $LATEST_FILE"
             if [ -z "$LATEST_FILE" ]; then
