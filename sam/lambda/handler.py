@@ -14,6 +14,7 @@ def lambda_handler(event, context):
     db_name = data['db_name']
     engine = data['engine']
     environment = data['environment']
+    slack_id = data.get('slack_id', None)
 
     # Retrieve GitHub token securely from AWS Secrets Manager
     secrets_client = boto3.client('secretsmanager')
@@ -38,8 +39,10 @@ def lambda_handler(event, context):
     db_identifier = \"{db_name}\"
     engine        = \"{engine}\"
     environment   = \"{environment}\"
-    """
 
+    """
+    if slack_id:
+        tfvars_content += f"slack_id      = \"{slack_id}\"\n"
     # Create or Ensure the branch exists
     try:
         repo.get_branch(branch_name)  # faild If Branch dosen't exist 
