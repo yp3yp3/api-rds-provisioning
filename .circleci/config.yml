@@ -24,14 +24,10 @@ jobs:
       - run:
           name: Find Latest tfvars File
           command: |
-            echo hello1
             LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1) || echo "Ignoring failure, continuing..."
-            echo hello2
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
-            echo "hello from $LATEST_FILE"
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              #circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
             
@@ -49,7 +45,6 @@ jobs:
             source $BASH_ENV
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
 
@@ -64,7 +59,6 @@ jobs:
             source $BASH_ENV
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
             cd terraform
@@ -78,7 +72,6 @@ jobs:
             source $BASH_ENV
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
 
@@ -92,7 +85,6 @@ jobs:
             source $BASH_ENV
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
 
@@ -112,7 +104,6 @@ jobs:
             source $BASH_ENV
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
 
