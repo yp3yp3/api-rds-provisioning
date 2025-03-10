@@ -8,3 +8,7 @@ output "db_generated_password" {
   description = "Auto-generated DB password"
   sensitive   = true
 }
+output "db_username" {
+  description = "The master username for the RDS instance"
+  value       = aws_db_instance.this.username
+}

@@ -64,7 +64,40 @@ jobs:
             cd terraform
             terraform apply -auto-approve -var-file="../$LATEST_FILE" -lock=false
             cd ..
+      # Step 4: Retrieve Terraform Outputs
+      - run:
+          name: Get Terraform Outputs
+          command: |
+            source $BASH_ENV
+            DB_USER=$(terraform output -raw db_username)
+            DB_PASS=$(terraform output -raw db_password)
+            DB_ENDPOINT=$(terraform output -raw db_endpoint)
+            SLACK_ID=$(terraform output -raw slack_id)
 
+            echo "DB_USER=$DB_USER" >> $BASH_ENV
+            echo "DB_PASS=$DB_PASS" >> $BASH_ENV
+            echo "DB_ENDPOINT=$DB_ENDPOINT" >> $BASH_ENV
+            echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
+      - run:
+          name: Send Slack Notification
+          command: |
+            source $BASH_ENV
+            curl -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{
+                    \"channel\": \"$SLACK_USER_ID\",
+                    \"text\": \"🚀 *New RDS Instance Created!*\",
+                    \"attachments\": [
+                      {
+                        \"color\": \"#36a64f\",
+                        \"fields\": [
+                          {\"title\": \"🔑 Username\", \"value\": \"$DB_USER\", \"short\": true},
+                          {\"title\": \"🔗 Endpoint\", \"value\": \"$DB_ENDPOINT\", \"short\": false}
+                        ]
+                      }
+                    ]
+                  }"
 workflows:
   version: 2
   apply-on-merge:
