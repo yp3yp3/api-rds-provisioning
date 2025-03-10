@@ -42,6 +42,7 @@ jobs:
           name: Terraform Init
           command: |
             cd terraform
+            echo $BASENAME
             terraform init -backend-config="key=environments/${BASENAME}.tfstate"
             cd ..
 
@@ -50,6 +51,7 @@ jobs:
           name: Terraform Plan
           command: |
             cd terraform
+            echo $LATEST_FILE
             terraform plan -var-file="../$LATEST_FILE"
             cd ..
 
