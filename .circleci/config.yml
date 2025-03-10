@@ -25,6 +25,7 @@ jobs:
           name: Find Latest tfvars File
           command: |
             LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1)
+            echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
               circleci-agent step halt  # Stop pipeline if no changes detected
@@ -35,7 +36,7 @@ jobs:
             BASENAME=$(basename "$LATEST_FILE" .tfvars)
             echo "Extracted Name: $BASENAME"
             echo "Latest Terraform vars file: $LATEST_FILE"
-            echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
+            
             echo "export BASENAME=$BASENAME" >> $BASH_ENV  # Save it for the next steps
       
       # Initialize Terraform (fetch provider plugins and configure backend)
@@ -43,6 +44,12 @@ jobs:
           name: Terraform Init
           command: |
             source $BASH_ENV
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
+            fi
+
             cd terraform
             terraform init -backend-config="key=environments/${BASENAME}.tfstate"
             cd ..
@@ -52,6 +59,11 @@ jobs:
           name: Terraform Plan
           command: |
             source $BASH_ENV
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
+            fi
             cd terraform
             terraform plan -var-file="../$LATEST_FILE" -lock=false
             cd ..
@@ -61,6 +73,12 @@ jobs:
           name: Terraform Apply
           command: |
             source $BASH_ENV
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
+            fi
+
             cd terraform
             terraform apply -auto-approve -var-file="../$LATEST_FILE" -lock=false
             cd ..
@@ -69,6 +87,12 @@ jobs:
           name: Get Terraform Outputs
           command: |
             source $BASH_ENV
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
+            fi
+
             cd terraform
             DB_USER=$(terraform output -raw db_username)
             DB_PASS=$(terraform output -raw db_password)
@@ -83,6 +107,12 @@ jobs:
           name: Send Slack Notification
           command: |
             source $BASH_ENV
+            if [ -z "$LATEST_FILE" ]; then
+              echo "No tfvars file changed, skipping apply."
+              circleci-agent step halt  # Stop pipeline if no changes detected
+              exit 0
+            fi
+            
             if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_ID" ]; then
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
@@ -125,8 +155,8 @@ jobs:
               
               # Extract the environment name from the file name (removing .tfvars extension)
               environment_name="$(basename "$tfvars_file" .tfvars)"
-
-              if terraform state list -state=environments/${environment_name}.tfstate > /dev/null 2>&1; then
+              bucket=$(awk -F '"' '/bucket/ {print $2}' backend.tf)
+              if aws s3 ls s3://$bucket/environments/${environment_name}.tfstate > /dev/null 2>&1; then
                 echo "File '$tfvars_file' is older than $DAYS_TO_KEEP days -> destroying environment..."
                 # Initialize Terraform with any relevant backend configuration
                 terraform init -backend-config="key=environments/${environment_name}.tfstate"
