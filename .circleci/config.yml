@@ -84,6 +84,9 @@ jobs:
           name: Send Slack Notification
           command: |
             source $BASH_ENV
+            echo $SLACK_USER_ID
+            echo $DB_USER
+            echo $DB_ENDPOINT
             apk add --no-cache curl
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
