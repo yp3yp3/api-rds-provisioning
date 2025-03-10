@@ -74,12 +74,8 @@ jobs:
             DB_PASS=$(terraform output -raw db_password)
             DB_ENDPOINT=$(terraform output -raw db_endpoint)
             SLACK_ID=$(awk -F '"' '/slack_user_id/ {print $2}' ../$LATEST_FILE)
-            echo $SLACK_ID
-            echo $DB_USER
-            echo $DB_ENDPOINT
-            echo $DB_PASS
             echo "DB_USER=$DB_USER" >> $BASH_ENV
-            echo "export DB_PASS=$(printf %q "$DB_PASS")" >> "$BASH_ENV"
+            echo "export DB_PASS=$(printf "$DB_PASS")" >> "$BASH_ENV"
             echo "DB_ENDPOINT=$DB_ENDPOINT" >> $BASH_ENV
             echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
             cd ..
@@ -87,10 +83,6 @@ jobs:
           name: Send Slack Notification
           command: |
             source $BASH_ENV
-            echo $SLACK_ID
-            echo $DB_USER
-            echo $DB_ENDPOINT
-            echo $DB_PASS
             apk add --no-cache curl
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
@@ -103,6 +95,7 @@ jobs:
                   "color": "#36a64f",
                   "fields": [
                     {"title": "🔑 Username", "value": "'"$DB_USER"'", "short": true},
+                    {"title": "🔑 db_password", "value": "'"$DB_PASS"'", "short": true},
                     {"title": "🔗 Endpoint", "value": "'"$DB_ENDPOINT"'", "short": false}
                   ]
                 }
