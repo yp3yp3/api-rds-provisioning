@@ -68,11 +68,12 @@ jobs:
       - run:
           name: Get Terraform Outputs
           command: |
+            source $BASH_ENV
             cd terraform
             DB_USER=$(terraform output -raw db_username)
             DB_PASS=$(terraform output -raw db_password)
             DB_ENDPOINT=$(terraform output -raw db_endpoint)
-            SLACK_ID=$(terraform output -raw slack_id)
+            SLACK_ID=$(awk -F '"' '/slack_user_id/ {print $2}' ../$LATEST_FILE)
 
             echo "DB_USER=$DB_USER" >> $BASH_ENV
             echo "DB_PASS=$DB_PASS" >> $BASH_ENV
