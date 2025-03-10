@@ -68,6 +68,7 @@ jobs:
       - run:
           name: Get Terraform Outputs
           command: |
+            cd terraform
             DB_USER=$(terraform output -raw db_username)
             DB_PASS=$(terraform output -raw db_password)
             DB_ENDPOINT=$(terraform output -raw db_endpoint)
@@ -77,6 +78,7 @@ jobs:
             echo "DB_PASS=$DB_PASS" >> $BASH_ENV
             echo "DB_ENDPOINT=$DB_ENDPOINT" >> $BASH_ENV
             echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
+            cd ..
       - run:
           name: Send Slack Notification
           command: |
