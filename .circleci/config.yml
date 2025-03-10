@@ -36,11 +36,13 @@ jobs:
             echo "Extracted Name: $BASENAME"
             echo "Latest Terraform vars file: $LATEST_FILE"
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
+            echo "export LATEST_FILE=$BASENAME" >> $BASH_ENV  # Save it for the next steps
       
       # Initialize Terraform (fetch provider plugins and configure backend)
       - run:
           name: Terraform Init
           command: |
+            source $BASH_ENV
             cd terraform
             echo $BASENAME
             terraform init -backend-config="key=environments/${BASENAME}.tfstate"
@@ -50,6 +52,7 @@ jobs:
       - run:
           name: Terraform Plan
           command: |
+            source $BASH_ENV
             cd terraform
             echo $LATEST_FILE
             terraform plan -var-file="../$LATEST_FILE"
@@ -59,6 +62,7 @@ jobs:
       - run:
           name: Terraform Apply
           command: |
+            source $BASH_ENV
             cd terraform
             terraform apply -auto-approve -var-file="../$LATEST_FILE"
             cd ..
