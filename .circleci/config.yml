@@ -133,7 +133,7 @@ jobs:
               terraform init -backend-config="key=environments/${environment_name}.tfstate"
 
               # Destroy resources using this .tfvars file
-              terraform destroy -auto-approve
+              terraform destroy -auto-approve -lock=false
 
             done
             cd ..
