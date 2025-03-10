@@ -28,7 +28,7 @@ jobs:
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
             if [ -z "$LATEST_FILE" ]; then
               echo "No tfvars file changed, skipping apply."
-              circleci-agent step halt  # Stop pipeline if no changes detected
+              #circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
             
@@ -112,7 +112,7 @@ jobs:
               circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
-            
+
             if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_ID" ]; then
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
