@@ -5,11 +5,11 @@ output "db_username" {
 
 output "db_password" {
   description = "The master password for the RDS instance"
-  value       = module.rds_instance.db_password
+  value       = module.rds_instance.db_generated_password
   sensitive   = true
 }
 
 output "db_endpoint" {
   description = "The connection endpoint for the RDS instance"
-  value       = module.rds_instance.db_endpoint
+  value       = module.rds_instance.db_instance_endpoint
 }
