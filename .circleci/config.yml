@@ -82,10 +82,8 @@ jobs:
           name: Send Slack Notification
           command: |
             source $BASH_ENV
-            curl -X POST "https://slack.com/api/chat.postMessage" \
-              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d @- <<EOF
+
+            JSON_PAYLOAD=$(cat <<EOF
             {
               "channel": "$SLACK_USER_ID",
               "text": "🚀 *New RDS Instance Created!*",
@@ -100,6 +98,12 @@ jobs:
               ]
             }
             EOF
+            )
+
+            curl -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$JSON_PAYLOAD"
 workflows:
   version: 2
   apply-on-merge:
