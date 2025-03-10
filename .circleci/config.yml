@@ -19,14 +19,7 @@ jobs:
             apk add --no-cache aws-cli
             aws --version  # Verify installation  
 
-      # Initialize Terraform (fetch provider plugins and configure backend)
-      - run:
-          name: Terraform Init
-          command: |
-            cd terraform
-            terraform init
-            cd ..
-
+      
       # Identify the latest modified `.tfvars` file from the last commit
       - run:
           name: Find Latest tfvars File
@@ -37,19 +30,20 @@ jobs:
               circleci-agent step halt  # Stop pipeline if no changes detected
               exit 0
             fi
+            
+            # Extract the filename without path and extension
+            BASENAME=$(basename "$LATEST_FILE" .tfvars)
+            echo "Extracted Name: $BASENAME"
             echo "Latest Terraform vars file: $LATEST_FILE"
             echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
-
-      # Validate that the tfvars file actually exists
+      
+      # Initialize Terraform (fetch provider plugins and configure backend)
       - run:
-          name: Validate tfvars File Exists
+          name: Terraform Init
           command: |
-            source $BASH_ENV
-            if [ ! -f "$LATEST_FILE" ]; then
-              echo "❌ Error: The specified tfvars file '$LATEST_FILE' does not exist."
-              ls -l $(dirname "$LATEST_FILE")  # List directory contents for debugging
-              exit 1
-            fi
+            cd terraform
+            terraform init -backend-config="key=environments/${BASENAME}.tfstate"
+            cd ..
 
       # Change directory to Terraform and run Terraform Plan
       - run:
