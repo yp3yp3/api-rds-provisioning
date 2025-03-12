@@ -18,6 +18,7 @@ jobs:
           command: |
             apk add --no-cache aws-cli
             aws --version  # Verify installation  
+            apk add --no-cache curl
       
       # Initialize Terraform and  Apply changes automatically
       - run:
@@ -61,12 +62,10 @@ jobs:
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
             fi
-            apk add --no-cache curl
 
             # AWS CLI command to retrieve the secret value
             AWS_CLI_CMD="aws secretsmanager get-secret-value --secret-id $DB_SECRET_ARN --query 'SecretString' --output text"
 
-            apk add --no-cache curl
 
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
