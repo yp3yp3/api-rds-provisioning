@@ -95,7 +95,7 @@ jobs:
       - run:
           name: Identify Old Non-Prod Databases
           command: |
-            DAYS_TO_KEEP=14  # Number of days before marking environments as old
+            DAYS_TO_KEEP=0  # Number of days before marking environments as old
             apk add --no-cache jq
             cd terraform
 
