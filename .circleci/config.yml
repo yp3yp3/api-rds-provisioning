@@ -49,11 +49,11 @@ jobs:
             cd terraform
             
             DB_SECRET_ARN=$(terraform output -json rds_secrets_arns | jq -r --arg db "$NEW_DB_NAME" '.[$db]')
-            echo "DB_SECRET_ARN=$DB_SECRET_ARN" >> $BASH_ENV
+            echo "DB_SECRET_ARN=\"$DB_SECRET_ARN\"" >> $BASH_ENV
 
             SLACK_ID=$(grep -A 2 "$NEW_DB_NAME" terraform.tfvars | awk -F '"' '/slack_id/ {print $6}')
 
-            echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
+            echo "SLACK_ID=\"$SLACK_ID\"" >> $BASH_ENV
             cd ..
       - run:
           name: Send Slack Notification
