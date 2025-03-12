@@ -26,8 +26,8 @@ jobs:
           command: |
             cd terraform
             terraform init
-            terraform plan -lock=false
-            terraform apply -auto-approve -lock=false
+            terraform plan 
+            terraform apply -auto-approve 
             cd ..
 
 
