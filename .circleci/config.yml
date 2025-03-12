@@ -16,6 +16,8 @@ jobs:
       - run:
           name: Install AWS CLI
           command: |
+            DAYS_TO_KEEP=14  # Number of days before marking environments as old
+            echo "DAYS_TO_KEEP=\"$DAYS_TO_KEEP\"" >> $BASH_ENV
             apk add --no-cache aws-cli
             aws --version  # Verify installation  
             apk add --no-cache curl
@@ -39,7 +41,7 @@ jobs:
             COMMIT_MSG=$(git log -1 --pretty=%B)
 
             # Extract the database name from the commit message (matching PR format)
-            NEW_DB_NAME=$(echo "$COMMIT_MSG" | sed -nE 's/Auto-generated PR to provision RDS instance `([^`]*)`.*/\1/p')
+            NEW_DB_NAME=$(echo "$COMMIT_MSG" | sed -nE 's/Update Terraform config for ([^ ]+) in .*/\1/p')
 
             if [ -z "$NEW_DB_NAME" ]; then
               echo "No new environment found from commit message, skipping."
@@ -95,8 +97,7 @@ jobs:
       - run:
           name: Identify Old Non-Prod Databases
           command: |
-            DAYS_TO_KEEP=14  # Number of days before marking environments as old
-            echo "DAYS_TO_KEEP=\"$DAYS_TO_KEEP\"" >> $BASH_ENV
+
             apk add --no-cache jq
             cd terraform
 
