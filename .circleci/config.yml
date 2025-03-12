@@ -134,7 +134,7 @@ jobs:
                 OLD_DBS="$OLD_DBS $DB_NAME"
               fi
             done < <(echo "$RDS_CREATION_DATES" | jq -c 'to_entries[]')
-            echo $OLD_DBS
+
             # Convert the array to a space-separated string and store it in the environment
             echo "OLD_DBS=\"$OLD_DBS\"" >> $BASH_ENV
             cd ..
@@ -160,7 +160,7 @@ jobs:
             for DB_NAME in $OLD_DBS; do
               echo "Commenting out $DB_NAME in terraform.tfvars..."
               sed -i "/$DB_NAME = {/ s/^/# /" $TFVARS_FILE
-              PR_BODY+="- $DB_NAME\n"
+              PR_BODY="$PR_BODY- $DB_NAME\n"
             done
 
             cd ..
