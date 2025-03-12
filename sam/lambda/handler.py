@@ -23,7 +23,7 @@ def lambda_handler(event, context):
     # GitHub configuration
     repo_name = os.environ['GITHUB_REPO_NAME']
     branch_name = f"add-{environment}-{db_name}"
-    tfvars_path = "terraform/environments/terraform.tfvars"
+    tfvars_path = "terraform/terraform.tfvars"
 
     # Authenticate with GitHub API
     github_client = Github(github_token)
@@ -62,6 +62,7 @@ def lambda_handler(event, context):
     # Check if the db_identifier already exists
     for line in lines[environments_start + 1 :]:
         if line.strip().startswith(f"{db_name} = "):  # Checks if db_name already exists
+            print(line)
             print(f"Database '{db_name}' already exists. Skipping update.")
             return {"status": "skipped", "message": f"Database '{db_name}' already exists"}
 

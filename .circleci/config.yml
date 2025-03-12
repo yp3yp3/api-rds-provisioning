@@ -58,6 +58,7 @@ jobs:
       - run:
           name: Send Slack Notification
           command: |
+            source $BASH_ENV
             if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_ID" ]; then
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
