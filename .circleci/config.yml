@@ -159,7 +159,7 @@ jobs:
             # Loop through each old database and comment it out
             for DB_NAME in $OLD_DBS; do
               echo "Commenting out $DB_NAME in terraform.tfvars..."
-              sed -i "/$DB_NAME = {/ s/^/# /" $TFVARS_FILE
+              sed -i "/^[[:space:]]*$DB_NAME[[:space:]]*=/ s/^/# /" $TFVARS_FILE
               PR_BODY="$PR_BODY- $DB_NAME\n"
             done
             cat terraform.tfvars
