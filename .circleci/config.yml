@@ -27,7 +27,7 @@ jobs:
             cd terraform
             terraform init
             terraform plan 
-            terraform apply -auto-approve || terraform force-unlock
+            terraform apply -auto-approve 
             cd ..
 
 
