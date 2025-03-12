@@ -134,7 +134,7 @@ jobs:
                 OLD_DBS="$OLD_DBS $DB_NAME"
               fi
             done
-
+            echo $OKD_DBS
             # Convert the array to a space-separated string and store it in the environment
             echo "OLD_DBS=\"$OLD_DBS\"" >> $BASH_ENV
             cd ..
