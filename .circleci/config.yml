@@ -23,12 +23,6 @@ jobs:
       - run:
           name: Terraform Apply
           command: |
-            LATEST_FILE=$(git diff --name-only HEAD~1 HEAD | grep "terraform.tfvars" || echo "")
-
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No new environment added, skipping."
-              exit 0
-            fi
             cd terraform
             terraform init
             terraform plan -lock=false
@@ -109,6 +103,7 @@ jobs:
             CURRENT_DATE=$(date +%s)
 
             # Store Terraform output directly in a variable
+            terraform init
             RDS_CREATION_DATES=$(terraform output -json rds_creation_dates)
 
             # Initialize an empty array for old databases
