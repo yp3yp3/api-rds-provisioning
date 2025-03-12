@@ -39,7 +39,7 @@ jobs:
           command: |
             # Get the latest commit message (which triggered this pipeline)
             COMMIT_MSG=$(git log -1 --pretty=%B)
-
+            echo "$COMMIT_MSG"
             # Extract the database name from the commit message (matching PR format)
             NEW_DB_NAME=$(echo "$COMMIT_MSG" | sed -nE 's/Update Terraform config for ([^ ]+) in .*/\1/p')
 
