@@ -93,10 +93,10 @@ jobs:
               ]
             }'
       - run:
-          name: Destroy old environments
+          name: Identify Old Non-Prod Databases
           command: |
             DAYS_TO_KEEP=14  # Number of days before marking environments as old
-            
+            apk add --no-cache jq
             cd terraform
 
             # Get the current date in seconds since epoch
@@ -149,7 +149,7 @@ jobs:
               echo "No old databases to mark as deprecated. Skipping."
               exit 0
             fi
-
+            
             cd terraform
             TFVARS_FILE="terraform.tfvars"
 
