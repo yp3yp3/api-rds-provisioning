@@ -25,4 +25,24 @@ resource "aws_db_instance" "this" {
   username                = var.db_username
   password                = random_password.db_password.result
   skip_final_snapshot     = true
+  tags = {
+    Name          = var.db_identifier
+    Environment   = var.environment
+    CreationDate  = timestamp()  # add creation date
+  }
 }
+
+resource "aws_secretsmanager_secret" "db_secret" {
+  name = "rds/${var.db_identifier}"
+  depends_on = [aws_db_instance.this]  # Secret will be created only after RDS is ready
+}
+
+resource "aws_secretsmanager_secret_version" "db_secret_version" {
+  secret_id     = aws_secretsmanager_secret.db_secret.id
+  secret_string = jsonencode({
+    username = var.db_username
+    password = random_password.db_password.result
+    endpoint = aws_db_instance.this.endpoint
+  })
+}
+

@@ -4,8 +4,11 @@ provider "aws" {
 
 module "rds_instance" {
   source = "./modules/rds"
+  
+  for_each = var.environments
 
-  db_identifier  = var.db_identifier
-  engine         = var.engine
-  environment    = var.environment
+  db_identifier  = each.key
+  engine         = each.value.engine
+  environment    = each.value.environment
 }
+

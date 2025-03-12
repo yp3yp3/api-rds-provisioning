@@ -18,113 +18,82 @@ jobs:
           command: |
             apk add --no-cache aws-cli
             aws --version  # Verify installation  
-
       
-      # Identify the latest modified `.tfvars` file from the last commit
-      - run:
-          name: Find Latest tfvars File
-          command: |
-            LATEST_FILE=$(git diff --name-only HEAD^ HEAD | grep '\.tfvars$' | tail -n 1) || echo "Ignoring failure, continuing..."
-            echo "export LATEST_FILE=$LATEST_FILE" >> $BASH_ENV  # Save it for the next steps
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
-              exit 0
-            fi
-            
-            # Extract the filename without path and extension
-            BASENAME=$(basename "$LATEST_FILE" .tfvars)
-            echo "Extracted Name: $BASENAME"
-            echo "Latest Terraform vars file: $LATEST_FILE"
-            
-            echo "export BASENAME=$BASENAME" >> $BASH_ENV  # Save it for the next steps
-      
-      # Initialize Terraform (fetch provider plugins and configure backend)
-      - run:
-          name: Terraform Init
-          command: |
-            source $BASH_ENV
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
-              exit 0
-            fi
-
-            cd terraform
-            terraform init -backend-config="key=environments/${BASENAME}.tfstate"
-            cd ..
-
-      # Change directory to Terraform and run Terraform Plan
-      - run:
-          name: Terraform Plan
-          command: |
-            source $BASH_ENV
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
-              exit 0
-            fi
-            cd terraform
-            terraform plan -var-file="../$LATEST_FILE" -lock=false
-            cd ..
-
-      # Apply changes automatically without manual approval
+      # Initialize Terraform and  Apply changes automatically
       - run:
           name: Terraform Apply
           command: |
-            source $BASH_ENV
+            LATEST_FILE=$(git diff --name-only HEAD~1 HEAD | grep "terraform.tfvars" || echo "")
+
             if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
+              echo "No new environment added, skipping."
               exit 0
             fi
-
             cd terraform
-            terraform apply -auto-approve -var-file="../$LATEST_FILE" -lock=false
+            terraform init
+            terraform plan
+            terraform apply -auto-approve
             cd ..
+
+
       # Step 4: Retrieve Terraform Outputs
       - run:
           name: Get Terraform Outputs
           command: |
-            source $BASH_ENV
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
+            # Get the latest commit message (which triggered this pipeline)
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+
+            # Extract the database name from the commit message (matching PR format)
+            NEW_DB_NAME=$(echo "$COMMIT_MSG" | sed -nE 's/Auto-generated PR to provision RDS instance `([^`]*)`.*/\1/p')
+
+            if [ -z "$NEW_DB_NAME" ]; then
+              echo "No new environment found from commit message, skipping."
               exit 0
             fi
 
             cd terraform
-            DB_USER=$(terraform output -raw db_username)
-            DB_PASS=$(terraform output -raw db_password)
-            DB_ENDPOINT=$(terraform output -raw db_endpoint)
-            SLACK_ID=$(awk -F '"' '/slack_id/ {print $2}' ../$LATEST_FILE)
-            echo "DB_USER=$DB_USER" >> $BASH_ENV
-            echo "DB_PASS=\"$DB_PASS\"" >> "$BASH_ENV"
-            echo "DB_ENDPOINT=$DB_ENDPOINT" >> $BASH_ENV
+            
+            DB_SECRET_ARN=$(terraform output -json rds_secrets_arns | jq -r --arg db "$NEW_DB_NAME" '.[$db]')
+            echo "DB_SECRET_ARN=$DB_SECRET_ARN" >> $BASH_ENV
+
+            SLACK_ID=$(grep -A 2 "$NEW_DB_NAME" terraform.tfvars | awk -F '"' '/slack_id/ {print $6}')
+
             echo "SLACK_ID=$SLACK_ID" >> $BASH_ENV
             cd ..
       - run:
           name: Send Slack Notification
           command: |
-            source $BASH_ENV
-            if [ -z "$LATEST_FILE" ]; then
-              echo "No tfvars file changed, skipping apply."
-              exit 0
-            fi
-
             if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_ID" ]; then
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
             fi
             apk add --no-cache curl
+
+            # AWS CLI command to retrieve the secret value
+            AWS_CLI_CMD="aws secretsmanager get-secret-value --secret-id $DB_SECRET_ARN --query 'SecretString' --output text"
+
+            apk add --no-cache curl
+
             curl -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
               "channel": "'"$SLACK_ID"'",
-              "text": "🚀 *New RDS Instance Created!*",
+              "text": "🚀 *New RDS Secret Created!*",
               "attachments": [
                 {
                   "color": "#36a64f",
                   "fields": [
-                    {"title": "🔑 Username", "value": "'"$DB_USER"'", "short": true},
-                    {"title": "🔑 db_password", "value": "'"$DB_PASS"'", "short": true},
-                    {"title": "🔗 Endpoint", "value": "'"$DB_ENDPOINT"'", "short": false}
+                    {
+                      "title": "🔗 Secret ARN",
+                      "value": "'"$DB_SECRET_ARN"'",
+                      "short": false
+                    },
+                    {
+                      "title": "📌 Retrieve Secret via AWS CLI",
+                      "value": "```'"$AWS_CLI_CMD"'```",
+                      "short": false
+                    }
                   ]
                 }
               ]
@@ -132,38 +101,115 @@ jobs:
       - run:
           name: Destroy old environments
           command: |
+            DAYS_TO_KEEP=14  # Number of days before marking environments as old
+            
             cd terraform
 
-            DAYS_TO_KEEP=14
+            # Get the current date in seconds since epoch
+            CURRENT_DATE=$(date +%s)
 
-            echo "Removing environments not modified in the last $DAYS_TO_KEEP days (except prod)..."
+            # Store Terraform output directly in a variable
+            RDS_CREATION_DATES=$(terraform output -json rds_creation_dates)
 
-            # Find all *.tfvars files that have not been modified in more than $DAYS_TO_KEEP days
-            for tfvars_file in $(find environments/ -maxdepth 1 -type f -name "*.tfvars" -mtime +$DAYS_TO_KEEP); do
-              
-              # Check if this file has "environment = \"prod\"" inside it
-              if grep -q 'environment\s*=\s*"prod"' "$tfvars_file"; then
-                echo "Skipping '$tfvars_file' (environment=prod)."
+            # Initialize an empty array for old databases
+            OLD_DBS=()
+
+            # Process each database instance
+            echo "$RDS_CREATION_DATES" | jq -c 'to_entries[]' | while read -r entry; do
+              DB_NAME=$(echo "$entry" | jq -r '.key')
+
+              # Check if this DB is marked as prod in terraform.tfvars
+              if grep -q "$DB_NAME" environments/terraform.tfvars | grep -q 'environment = "prod"'; then
+                echo "$DB_NAME is a prod environment, skipping."
                 continue
               fi
-              
-              # Extract the environment name from the file name (removing .tfvars extension)
-              environment_name="$(basename "$tfvars_file" .tfvars)"
-              bucket=$(awk -F '"' '/bucket/ {print $2}' backend.tf)
-              if aws s3 ls s3://$bucket/environments/${environment_name}.tfstate > /dev/null 2>&1; then
-                echo "File '$tfvars_file' is older than $DAYS_TO_KEEP days -> destroying environment..."
-                # Initialize Terraform with any relevant backend configuration
-                terraform init -backend-config="key=environments/${environment_name}.tfstate" -reconfigure
 
-                # Destroy resources using this .tfvars file
-                terraform destroy -auto-approve -lock=false -var-file="$tfvars_file"
-              
-              else
-                echo "No existing Terraform state found for '$environment_name'. Skipping destroy."
+              CREATION_DATE=$(echo "$entry" | jq -r '.value')
+
+              # Convert CreationDate to epoch time
+              CREATION_DATE_EPOCH=$(date -d "$CREATION_DATE" +%s || date -j -f "%Y-%m-%dT%H:%M:%S" "$CREATION_DATE" +%s)
+
+              # Calculate age in days
+              AGE_DAYS=$(( (CURRENT_DATE - CREATION_DATE_EPOCH) / 86400 ))
+
+
+
+              if [ "$AGE_DAYS" -ge "$DAYS_TO_KEEP" ]; then
+                echo "$DB_NAME is older than $DAYS_TO_KEEP days and not prod, adding to list."
+                OLD_DBS+=("$DB_NAME")
               fi
-
             done
+
+            # Convert the array to a space-separated string and store it in the environment
+            echo "OLD_DBS=${OLD_DBS[*]}" >> $BASH_ENV
             cd ..
+      - run:
+          name: Comment Out Old Databases in terraform.tfvars
+          command: |
+            # Load OLD_DBS from environment variable
+            source $BASH_ENV
+
+            # Exit early if there are no old databases
+            if [ -z "$OLD_DBS" ]; then
+              echo "No old databases to mark as deprecated. Skipping."
+              exit 0
+            fi
+
+            cd terraform
+            TFVARS_FILE="terraform.tfvars"
+
+            # Initialize PR_BODY message
+            PR_BODY="This PR automatically comments out the following environments older than $DAYS_TO_KEEP days:\n\n"
+
+            # Loop through each old database and comment it out
+            for DB_NAME in $OLD_DBS; do
+              echo "Commenting out $DB_NAME in terraform.tfvars..."
+              sed -i "/$DB_NAME = {/ s/^/# /" $TFVARS_FILE
+              PR_BODY+="- $DB_NAME\n"
+            done
+
+            cd ..
+      - run:
+          name: Create PR for Deprecated Environments
+          command: |
+            source $BASH_ENV
+            if [ -z "$PR_BODY" ]; then
+              echo "No changes detected, skipping PR creation."
+              exit 0
+            fi
+
+            cd terraform
+
+            # Configure Git
+            git config --global user.email "circleci-bot@example.com"
+            git config --global user.name "CircleCI Bot"
+
+            # Create a new branch
+            BRANCH_NAME="cleanup-old-environments-$(date +%Y%m%d%H%M%S)"
+            git checkout -b "$BRANCH_NAME"
+
+            # Commit changes
+            git add terraform.tfvars
+            git commit -m "Mark old environments as deprecated in terraform.tfvars"
+
+            # Push branch to origin
+            git push origin "$BRANCH_NAME"
+
+            # Create Pull Request via GitHub API
+            PR_TITLE="Mark old environments as deprecated"
+
+            curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/pulls \
+              -d '{
+                "title": "'"$PR_TITLE"'",
+                "body": "'"$PR_BODY"'",
+                "head": "'"$BRANCH_NAME"'",
+                "base": "main"
+              }'
+
+            cd ..
+
 
 workflows:
   version: 2

@@ -1,14 +1,8 @@
-output "db_instance_endpoint" {
-  value       = aws_db_instance.this.endpoint
-  description = "RDS Endpoint"
+output "db_secret_arn" {
+  value       = aws_secretsmanager_secret.db_secret.arn
+  description = "ARN of the stored RDS secret"
 }
-
-output "db_generated_password" {
-  value       = random_password.db_password.result
-  description = "Auto-generated DB password"
-  sensitive   = true
-}
-output "db_username" {
-  description = "The master username for the RDS instance"
-  value       = aws_db_instance.this.username
+output "creation_date" {
+  value       = aws_db_instance.this.tags["CreationDate"]
+  description = "The creation date of the RDS instance"
 }
