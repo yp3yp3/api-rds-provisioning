@@ -10,6 +10,7 @@ terraform {
     }
   }
 }
+resource "time_static" "creation_time" {}
 
 resource "random_password" "db_password" {
   length  = 16
@@ -28,7 +29,7 @@ resource "aws_db_instance" "this" {
   tags = {
     Name          = var.db_identifier
     Environment   = var.environment
-    CreationDate  = timestamp()  # add creation date
+    CreationDate  = time_static.creation_time.rfc3339  # add creation date
   }
 }
 
