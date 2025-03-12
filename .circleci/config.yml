@@ -162,7 +162,7 @@ jobs:
               sed -i "/$DB_NAME = {/ s/^/# /" $TFVARS_FILE
               PR_BODY="$PR_BODY- $DB_NAME\n"
             done
-
+            echo "PR_BODY=\"$PR_BODY\"" >> $BASH_ENV
             cd ..
       - run:
           name: Create PR for Deprecated Environments
