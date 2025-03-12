@@ -122,7 +122,7 @@ jobs:
               CREATION_DATE=$(echo "$entry" | jq -r '.value')
 
               # Convert CreationDate to epoch time
-              CREATION_DATE_EPOCH=$(date -d "$(echo "$CREATION_DATE" | sed 's/Z//')" +%s)
+              CREATION_DATE_EPOCH=$(date -d "$(echo "$CREATION_DATE" | sed -E 's/T/ /; s/Z//')" +%s)
 
               # Calculate age in days
               AGE_DAYS=$(( (CURRENT_DATE - CREATION_DATE_EPOCH) / 86400 ))
