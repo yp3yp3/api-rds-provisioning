@@ -12,6 +12,14 @@ Parameters:
     Type: String
     Description: "GitHub token to access the repository"
     NoEcho: true
+  DomainName:
+    Type: String
+    Description: "Custom domain name for the API Gateway"
+    Default: "api.example.com"
+
+  CertificateArn:
+    Type: String
+    Description: "ARN of the SSL/TLS certificate for the custom domain"
 
 Resources:
 
@@ -152,11 +160,11 @@ Resources:
   ApiGatewayDomain:
     Type: AWS::ApiGateway::DomainName
     Properties:
-      DomainName: api.yp3yp3.online
+      DomainName: !Ref DomainName
       EndpointConfiguration:
         Types:
           - REGIONAL
-      RegionalCertificateArn: arn:aws:acm:us-east-1:992382507075:certificate/4c818c22-adc8-458b-a2bd-9a41be8ef182
+      RegionalCertificateArn: !Ref CertificateArn
 
   # Mapping Custom Domain to API Gateway Stage
   ApiBasePathMapping:

@@ -6,3 +6,6 @@ output "creation_date" {
   value       = aws_db_instance.this.tags["CreationDate"]
   description = "The creation date of the RDS instance"
 }
+output "rds_arn" {
+  value = aws_db_instance.this.arn
+}
