@@ -54,7 +54,7 @@ jobs:
             DB_SECRET_ARN=$(terraform output -json rds_secrets_arns | jq -r --arg db "$NEW_DB_NAME" '.[$db]')
             echo "DB_SECRET_ARN=\"$DB_SECRET_ARN\"" >> $BASH_ENV
 
-            SLACK_ID=$(grep -A 2 "$NEW_DB_NAME" terraform.tfvars | awk -F '"' '/slack_id/ {print $6}')
+            SLACK_ID=$(grep -A 2 "$NEW_DB_NAME" terraform.tfvars | awk -F '"' '/slack_id/ {print $6; exit}')
 
             echo "SLACK_ID=\"$SLACK_ID\"" >> $BASH_ENV
             cd ..
