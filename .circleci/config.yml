@@ -31,8 +31,8 @@ jobs:
             fi
             cd terraform
             terraform init
-            terraform plan
-            terraform apply -auto-approve
+            terraform plan -lock=false
+            terraform apply -auto-approve -lock=false
             cd ..
 
 
