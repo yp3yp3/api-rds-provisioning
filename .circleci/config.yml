@@ -107,10 +107,10 @@ jobs:
             RDS_CREATION_DATES=$(terraform output -json rds_creation_dates)
 
             # Initialize an empty array for old databases
-            export OLD_DBS=""
+            OLD_DBS=""
 
             # Process each database instance
-            echo "$RDS_CREATION_DATES" | jq -c 'to_entries[]' | while read -r entry; do
+            while read -r entry; do
               DB_NAME=$(echo "$entry" | jq -r '.key')
 
               # Check if this DB is marked as prod in terraform.tfvars
@@ -131,9 +131,9 @@ jobs:
 
               if [ "$AGE_DAYS" -ge "$DAYS_TO_KEEP" ]; then
                 echo "$DB_NAME is older than $DAYS_TO_KEEP days and not prod, adding to list."
-                export OLD_DBS="$OLD_DBS $DB_NAME"
+                OLD_DBS="$OLD_DBS $DB_NAME"
               fi
-            done
+            done < <(echo "$RDS_CREATION_DATES" | jq -c 'to_entries[]')
             echo $OLD_DBS
             # Convert the array to a space-separated string and store it in the environment
             echo "OLD_DBS=\"$OLD_DBS\"" >> $BASH_ENV
