@@ -162,6 +162,7 @@ jobs:
               sed -i "/$DB_NAME = {/ s/^/# /" $TFVARS_FILE
               PR_BODY="$PR_BODY- $DB_NAME\n"
             done
+            cat terraform.tfvars
             echo "PR_BODY=\"$PR_BODY\"" >> $BASH_ENV
             cd ..
       - run:
@@ -174,7 +175,7 @@ jobs:
             fi
 
             cd terraform
-
+            cat terraform.tfvars
             # Configure Git
             git config --global user.email "circleci-bot@example.com"
             git config --global user.name "CircleCI Bot"
