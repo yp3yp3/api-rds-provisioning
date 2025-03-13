@@ -143,7 +143,14 @@ Resources:
     DependsOn: ApiGateway
     Properties:
       RestApiId: !Ref ApiGateway
-      StageName: Prod  
+
+  ApiGatewayProdStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: Prod
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+
 
 
 
@@ -179,7 +186,7 @@ Resources:
   # Mapping Custom Domain to API Gateway Stage
   ApiBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
-    DependsOn: ApiGatewayDeployment
+    DependsOn: ApiGatewayProdStage
     Properties:
       DomainName: !Ref ApiGatewayDomain
       RestApiId: !Ref ApiGateway
