@@ -21,10 +21,6 @@ jobs:
               circleci step halt
             fi
 
-#      - run:
- #         name: Install AWS CLI
-  #        command: |
-   #         apk add --no-cache aws-cli
 
       - run:
           name: Build SAM Application
@@ -37,10 +33,16 @@ jobs:
           name: Deploy SAM Application with GitHubToken
           command: |
             cd sam
+            GITHUB_REPO_NAME=$(grep -oP '(?<=GitHubRepoName=)[^,]+' samconfig.toml | tr -d '" ')
+            CERTIFICATE_ARN=$(grep -oP '(?<=CertificateArn=)[^,]+' samconfig.toml | tr -d '" ')
+
             sam deploy \
-              --no-confirm-changeset \
-              --no-fail-on-empty-changeset \
-              --parameter-overrides GitHubToken=$GITHUB_TOKEN
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+            GitHubToken=$GITHUB_TOKEN \
+            GitHubRepoName=$GITHUB_REPO_NAME \
+            CertificateArn=$CERTIFICATE_ARN
             cd ..
 
   terraform-apply:
