@@ -7,21 +7,60 @@ executors:
     working_directory: ~/repo
 
 jobs:
+  deploy_sam:
+    docker:
+      - image: amazon/aws-sam-cli
+    steps:
+      - checkout  # Fetch latest code
+
+      - run:
+          name: Check for changes in `sam/`
+          command: |
+            if git diff --quiet HEAD~1 -- sam/; then
+              echo "No changes detected in 'sam/'. Skipping deployment."
+              circleci step halt
+            fi
+
+      - run:
+          name: Install AWS CLI
+          command: |
+            apt-get update && apt-get install -y awscli
+
+      - run:
+          name: Build SAM Application
+          command: |
+            cd sam
+            sam build
+            cd ..
+
+      - run:
+          name: Deploy SAM Application with GitHubToken
+          command: |
+            cd sam
+            sam deploy \
+              --no-confirm-changeset \
+              --no-fail-on-empty-changeset \
+              --parameter-overrides GitHubToken=$GITHUB_TOKEN
+            cd ..
+
   terraform-apply:
     executor: terraform-executor
     steps:
       - checkout  # Pull the latest code from the repository
 
-      # Install AWS CLI to allow Terraform to interact with AWS resources
       - run:
-          name: Install AWS CLI
+          name: Check for changes in `terraform/`
           command: |
-            DAYS_TO_KEEP=14  # Number of days before marking environments as old
-            echo "DAYS_TO_KEEP=\"$DAYS_TO_KEEP\"" >> $BASH_ENV
-            apk add --no-cache jq
-            apk add --no-cache aws-cli
+            if git diff --quiet HEAD~1 -- terraform/; then
+              echo "No changes detected in 'terraform/'. Skipping deployment."
+              circleci step halt
+            fi
+
+      - run:
+          name: Install AWS CLI & Dependencies
+          command: |
+            apk add --no-cache jq aws-cli curl
             aws --version  # Verify installation  
-            apk add --no-cache curl
       
       # Initialize Terraform and  Apply changes automatically
       - run:
@@ -61,7 +100,7 @@ jobs:
       - run:
           name: Send Slack Notification
           command: |
-            source $BASH_ENV
+            source $BASH_ENV || true
             if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_ID" ]; then
               echo "Skipping Slack Notification because SLACK_BOT_TOKEN or SLACK_ID is empty."
               exit 0
@@ -95,40 +134,37 @@ jobs:
                 }
               ]
             }'
+  find_old_environments:
+    executor: terraform-executor
+    steps:
+      - checkout  # Pull the latest code from the repository
+
+      - run:
+          name: Install AWS CLI & jq
+          command: |
+            apk add --no-cache jq aws-cli curl
+
       - run:
           name: Identify Old Non-Prod Databases
           command: |
             cd terraform
-
-            # Get the current date in seconds since epoch
             CURRENT_DATE=$(date +%s)
-
-            # Store Terraform output directly in a variable
+            DAYS_TO_KEEP=${DAYS_TO_KEEP:-14}  # Default to 14 days if not set
             terraform init
             RDS_CREATION_DATES=$(terraform output -json rds_creation_dates)
-
-            # Initialize an empty array for old databases
             OLD_DBS=""
 
-            # Process each database instance
             while read -r entry; do
               DB_NAME=$(echo "$entry" | jq -r '.key')
 
-              # Check if this DB is marked as prod in terraform.tfvars
               if grep -q "$DB_NAME" terraform.tfvars | grep -q 'environment = "prod"'; then
                 echo "$DB_NAME is a prod environment, skipping."
                 continue
               fi
 
               CREATION_DATE=$(echo "$entry" | jq -r '.value')
-
-              # Convert CreationDate to epoch time
               CREATION_DATE_EPOCH=$(date -d "$(echo "$CREATION_DATE" | sed -E 's/T/ /; s/Z//')" +%s)
-
-              # Calculate age in days
               AGE_DAYS=$(( (CURRENT_DATE - CREATION_DATE_EPOCH) / 86400 ))
-
-
 
               if [ "$AGE_DAYS" -ge "$DAYS_TO_KEEP" ]; then
                 echo "$DB_NAME is older than $DAYS_TO_KEEP days and not prod, adding to list."
@@ -136,14 +172,14 @@ jobs:
               fi
             done < <(echo "$RDS_CREATION_DATES" | jq -c 'to_entries[]')
 
-            # Convert the array to a space-separated string and store it in the environment
             echo "OLD_DBS=\"$OLD_DBS\"" >> $BASH_ENV
             cd ..
+
       - run:
           name: Comment Out Old Databases in terraform.tfvars
           command: |
             # Load OLD_DBS from environment variable
-            source $BASH_ENV
+            source $BASH_ENV || true
 
             # Exit early if there are no old databases
             if [ -z "$OLD_DBS" ]; then
@@ -168,7 +204,7 @@ jobs:
       - run:
           name: Create PR for Deprecated Environments
           command: |
-            source $BASH_ENV
+            source $BASH_ENV || true
             if [ -z "$PR_BODY" ]; then
               echo "No changes detected, skipping PR creation."
               exit 0
@@ -210,9 +246,17 @@ jobs:
 
 workflows:
   version: 2
-  apply-on-merge:
+  deploy_and_manage:
     jobs:
+      - deploy_sam:
+          filters:
+            branches:
+              only: main
       - terraform-apply:
           filters:
             branches:
-              only: main  # This workflow triggers ONLY when merging into `main`
+              only: main
+      - find_old_environments:
+          filters:
+            branches:
+              only: main
