@@ -49,7 +49,7 @@ First, fork this repository to your GitHub account.
 Edit the following file:
 
 ```bash
-terraform/terraform.tfvars
+terraform/backend.tfvars
 ```
 
 Ensure it contains:

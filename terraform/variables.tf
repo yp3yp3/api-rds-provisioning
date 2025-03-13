@@ -9,8 +9,3 @@ variable "environments" {
     error_message = "Engine must be either 'mysql' or 'postgres'."
   }  
 }
-
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-}
