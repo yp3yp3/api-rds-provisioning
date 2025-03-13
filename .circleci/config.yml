@@ -9,7 +9,7 @@ executors:
 jobs:
   deploy_sam:
     docker:
-      - image: amazon/aws-sam-cli
+      - image: public.ecr.aws/sam/build-python3.8:latest
     steps:
       - checkout  # Fetch latest code
 
