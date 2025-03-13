@@ -144,7 +144,19 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGateway
 
-
+  ApiGatewayProdStage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: ApiGatewayDeployment  # מחכה שהפריסה תסתיים
+    Properties:
+      StageName: Prod
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+      Description: "Production Stage for API Gateway"
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          DataTraceEnabled: true
 
 
 
@@ -181,7 +193,7 @@ Resources:
   # Mapping Custom Domain to API Gateway Stage
   ApiBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
-    DependsOn: ApiGatewayDeployment
+    DependsOn: ApiGatewayProdStage
     Properties:
       DomainName: !Ref ApiGatewayDomain
       RestApiId: !Ref ApiGateway
