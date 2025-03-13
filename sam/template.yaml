@@ -99,7 +99,10 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      EndpointConfiguration: REGIONAL
+      Domain:
+        DomainName: !Ref DomainName
+        CertificateArn: !Ref CertificateArn
+        EndpointConfiguration: REGIONAL
       AccessLogSetting:
         DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
         Format: '{ "requestId":"$context.requestId", "ip":"$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod", "routeKey":"$context.routeKey", "status":"$context.status", "responseLength":"$context.responseLength" }'
@@ -138,14 +141,6 @@ Resources:
                           "message": "Request accepted"
                         }
 
-  ApiGatewayDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn: ApiGateway
-    Properties:
-      RestApiId: !Ref ApiGateway
-
-
-
 
 
   # IAM Role allowing API Gateway to publish messages to SNS
@@ -167,25 +162,7 @@ Resources:
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref RDSRequestTopic
-  # Custom Domain for API Gateway
-  ApiGatewayDomain:
-    Type: AWS::ApiGateway::DomainName
-    Properties:
-      DomainName: !Ref DomainName
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
-      RegionalCertificateArn: !Ref CertificateArn
 
-  # Mapping Custom Domain to API Gateway Stage
-  ApiBasePathMapping:
-    Type: AWS::ApiGateway::BasePathMapping
-    Condition: IsStageAvailable
-    Properties:
-      DomainName: !Ref ApiGatewayDomain
-      RestApiId: !Ref ApiGateway
-      Stage: Prod
-  
   ApiGatewayCloudWatchRole:
     Type: AWS::IAM::Role
     Properties:
@@ -293,9 +270,6 @@ Resources:
 
 
 
-Conditions:
-  IsStageAvailable:
-    !Not [!Equals [!Ref ApiGateway.Stage, ""]]
 
 Outputs:
   ApiGatewayUrl:
