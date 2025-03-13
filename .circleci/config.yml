@@ -21,10 +21,10 @@ jobs:
               circleci step halt
             fi
 
-      - run:
-          name: Install AWS CLI
-          command: |
-            apk add --no-cache aws-cli
+#      - run:
+ #         name: Install AWS CLI
+  #        command: |
+   #         apk add --no-cache aws-cli
 
       - run:
           name: Build SAM Application
