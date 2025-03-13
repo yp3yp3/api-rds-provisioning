@@ -35,6 +35,7 @@ jobs:
             cd sam
             GITHUB_REPO_NAME=$(grep -oP '(?<=GitHubRepoName=)[^,]+' samconfig.toml | tr -d '" ')
             CERTIFICATE_ARN=$(grep -oP '(?<=CertificateArn=)[^,]+' samconfig.toml | tr -d '" ')
+            DOMAIN_NAME=$(grep -oP '(?<=DomainName=)[^,]+' samconfig.toml | tr -d '" ')
 
             sam deploy \
             --no-confirm-changeset \
@@ -42,7 +43,8 @@ jobs:
             --parameter-overrides \
             GitHubToken=$GITHUB_TOKEN \
             GitHubRepoName=$GITHUB_REPO_NAME \
-            CertificateArn=$CERTIFICATE_ARN
+            CertificateArn=$CERTIFICATE_ARN \
+            DomainName=$DOMAIN_NAME
             cd ..
 
   terraform-apply:

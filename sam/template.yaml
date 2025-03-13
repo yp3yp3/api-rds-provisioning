@@ -15,7 +15,6 @@ Parameters:
   DomainName:
     Type: String
     Description: "Custom domain name for the API Gateway"
-    Default: "api.example.com"
 
   CertificateArn:
     Type: String
@@ -27,7 +26,7 @@ Resources:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: github-token-secret
-      SecretString: !Ref GitHubToken
+      SecretString: !Ref GitHubToken # Store GitHub token securely in Secrets Manager
 
   # SNS Topic to publish incoming provisioning requests
   RDSRequestTopic:
@@ -198,6 +197,8 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "*"
+  
+  # CloudWatch log groups for API Gateway & SQS monitoring
   ApiGatewayLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
