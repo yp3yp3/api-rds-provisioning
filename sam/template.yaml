@@ -138,6 +138,14 @@ Resources:
                           "message": "Request accepted"
                         }
 
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiGateway
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: Prod  
+
+
 
   # IAM Role allowing API Gateway to publish messages to SNS
   ApiGatewaySnsRole:
@@ -171,6 +179,7 @@ Resources:
   # Mapping Custom Domain to API Gateway Stage
   ApiBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: ApiGatewayDeployment
     Properties:
       DomainName: !Ref ApiGatewayDomain
       RestApiId: !Ref ApiGateway
